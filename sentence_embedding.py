@@ -1,4 +1,5 @@
 from positional_encoding import PositionalEncoding
+from global_functions import get_device
 import torch
 from torch import nn
 
@@ -14,10 +15,10 @@ class SentenceEmbedding(nn.Module):
         PADDING_TOKEN,
     ):
         super().__init__()
-        self.vocab_size = (len(language_to_index),)
+        self.vocab_size = len(language_to_index)
         self.max_sequence_length = max_sequence_length
         self.embedding = nn.Embedding(self.vocab_size, d_model)
-        self.language_to_index = (language_to_index,)
+        self.language_to_index = language_to_index
         self.position_encoder = PositionalEncoding(d_model, max_sequence_length)
         self.dropout = nn.Dropout(p=0.1)
         self.START_TOKEN = START_TOKEN
@@ -25,7 +26,7 @@ class SentenceEmbedding(nn.Module):
         self.PADDING_TOKEN = PADDING_TOKEN
 
     def batch_tokenize(self, batch, start_token=True, end_token=True):
-        def tokenize(sentence, start_token=True, end_token=True):
+        def tokenize(sentence, start_token, end_token):
             sentence_word_indicies = [
                 self.language_to_index[token] for token in list(sentence)
             ]
@@ -47,9 +48,9 @@ class SentenceEmbedding(nn.Module):
         tokenized = torch.stack(tokenized)
         return tokenized.to(get_device())
 
-    def forward(self, x, end_token=True):
-        x = self.batch_tokenize(x, end_token)
+    def forward(self, x, start_token, end_token):
+        x = self.batch_tokenize(x, start_token, end_token)
         x = self.embedding(x)
         pos = self.position_encoder().to(get_device())
-        x = self.dropout(x.pos)
+        x = self.dropout(x + pos)
         return x
