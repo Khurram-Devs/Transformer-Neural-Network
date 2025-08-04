@@ -16,3 +16,14 @@ def scaled_dot_product(q, k, v, mask=None):
     attention = F.softmax(scaled, dim=-1)
     values = torch.matmul(attention, v)
     return values, attention
+
+
+def is_valid_tokens(sentence, vocab):
+    for token in list(set(sentence)):
+        if token not in vocab:
+            return False
+    return True
+
+
+def is_valid_length(sentence, max_sequence_length):
+    return len(list(sentence)) < (max_sequence_length - 1)
