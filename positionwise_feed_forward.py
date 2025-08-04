@@ -12,11 +12,7 @@ class PositionwiseFeedForward(nn.Module):
 
     def forward(self, x):
         x = self.linear1(x)
-        print(f"x after first linear layer: {x.size()}")
         x = self.relu(x)
-        print(f"x after activation: {x.size()}")
         x = self.dropout(x)
-        print(f"x after dropout: {x.size()}")
         x = self.linear2(x)
-        print(f"x after 2nd linear layer: {x.size()}")
         return x
