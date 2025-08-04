@@ -3,13 +3,16 @@ import math
 import torch.nn.functional as F
 
 
+def get_device():
+    return torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
+
 def scaled_dot_product(q, k, v, mask=None):
     d_k = q.size()[-1]
     scaled = torch.matmul(q, k.transpose(-1, -2)) / math.sqrt(d_k)
-    print(f"scaled.size() : {scaled.size()}")
     if mask is not None:
-        print(f"-- ADDING MASK of shape {mask.size()} --")
-        scaled += mask
+        scaled = scaled.permute(1, 0, 2, 3) + mask
+        scaled = scaled.permute(1, 0, 2, 3)
     attention = F.softmax(scaled, dim=-1)
     values = torch.matmul(attention, v)
     return values, attention
