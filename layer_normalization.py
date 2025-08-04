@@ -4,6 +4,7 @@ from torch import nn
 
 class LayerNormalization(nn.Module):
     def __init__(self, parameters_shape, eps=1e-5):
+        super().__init__()
         self.parameters_shape = parameters_shape
         self.eps = eps
         self.gamma = nn.Parameter(torch.ones(parameters_shape))
@@ -11,26 +12,15 @@ class LayerNormalization(nn.Module):
 
     def forward(self, inputs):
         dims = [-(i + 1) for i in range(len(self.parameters_shape))]
+        print(f"dims: {dims}")
         mean = inputs.mean(dim=dims, keepdim=True)
-        print(f"Mean \n ({mean.size()}): \n {mean}")
+        print(f"Mean \n ({mean.size()})")
         var = ((inputs - mean) ** 2).mean(dim=dims, keepdim=True)
         std = (var + self.eps).sqrt()
-        print(f"Standard Deviation \n ({std.size()}): \n {std}")
+        print(f"Standard Deviation \n ({std.size()})")
         y = (inputs - mean) / std
-        print(f"y \n ({y.size()}): \n {y}")
+        print(f"y \n ({y.size()})")
         out = self.gamma * y + self.beta
-        print(f"out \n ({out.size()}): \n {out}")
+        print(f"self.gamma: {self.gamma.size()}, self.beta: {self.beta.size()}")
+        print(f"out \n ({out.size()})")
         return out
-
-
-# Input
-
-batch_size = 3
-sentence_length = 5
-embeddin_dim = 8
-inputs = torch.randn(sentence_length, batch_size, embeddin_dim)
-
-print(f"input \n ({inputs.size()}): \n {inputs}")
-
-layer_norm = LayerNormalization(inputs.size()[-2:])
-out = layer_norm.forward(inputs)
