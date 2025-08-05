@@ -172,31 +172,30 @@ english_vocabulary = [
 index_to_spanish = {k: v for k, v in enumerate(spanish_vocabulary)}
 spanish_to_index = {v: k for k, v in enumerate(spanish_vocabulary)}
 index_to_english = {k: v for k, v in enumerate(english_vocabulary)}
-english_to_index = {k: v for k, v in enumerate(english_vocabulary)}
+english_to_index = {v: k for k, v in enumerate(english_vocabulary)}
 
 with open(english_file, "r") as file:
     english_sentences = file.readlines()
 with open(spanish_file, "r") as file:
     spanish_sentences = file.readlines()
 
-TOTAL_SENTENCES = 2000
+TOTAL_SENTENCES = 50
 english_sentences = english_sentences[:TOTAL_SENTENCES]
 spanish_sentences = spanish_sentences[:TOTAL_SENTENCES]
 english_sentences = [sentence.rstrip("\n").lower() for sentence in english_sentences]
-spanish_sentences = [sentence.rstrip("\n") for sentence in spanish_sentences]
+spanish_sentences = [sentence.rstrip("\n").lower() for sentence in spanish_sentences]
 
 max_sequence_length = 200
 
 valid_sentence_indices = []
 for index in range(len(spanish_sentences)):
-    spanish_sentences, english_sentences = (
-        spanish_sentences[index],
-        english_sentences[index],
-    )
+    spanish_sentence = spanish_sentences[index]
+    english_sentence = english_sentences[index]
+
     if (
-        is_valid_length(spanish_sentences, max_sequence_length)
-        and is_valid_length(english_sentences, max_sequence_length)
-        and is_valid_tokens(spanish_sentences, spanish_vocabulary)
+        is_valid_length(spanish_sentence, max_sequence_length)
+        and is_valid_length(english_sentence, max_sequence_length)
+        and is_valid_tokens(spanish_sentence, spanish_vocabulary)
     ):
         valid_sentence_indices.append(index)
 
@@ -249,12 +248,12 @@ for batch_num, batch in enumerate(iterator):
     if batch_num > 3:
         break
 
-criterian = nn.CrossEntropLoss(
+criterian = nn.CrossEntropyLoss(
     ignore_index=spanish_to_index[PADDING_TOKEN], reduction="none"
 )
 
 for params in transformer.parameters():
-    if params.dims() > 1:
+    if params.dim() > 1:
         nn.init.xavier_uniform_(params)
 
 optim = torch.optim.Adam(transformer.parameters(), lr=1e-4)
@@ -395,7 +394,7 @@ transformer.eval()
 
 
 def translate(eng_sentence):
-    eng_sentence = (eng_sentence,)
+    eng_sentence = (eng_sentence.lower(),)
     es_sentence = ("",)
     for word_counter in range(max_sequence_length):
         (
@@ -421,3 +420,6 @@ def translate(eng_sentence):
         if next_token == END_TOKEN:
             break
         return es_sentence[0]
+
+transation = translate("should we go to the college?")
+print(f"Translation: {transation}")

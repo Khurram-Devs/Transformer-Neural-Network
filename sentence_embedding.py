@@ -28,18 +28,19 @@ class SentenceEmbedding(nn.Module):
     def batch_tokenize(self, batch, start_token=True, end_token=True):
         def tokenize(sentence, start_token, end_token):
             sentence_word_indicies = [
-                self.language_to_index[token] for token in list(sentence)
+                self.language_to_index.get(token, self.language_to_index.get(self.PADDING_TOKEN, 0))
+                for token in list(sentence)
             ]
             if start_token:
-                sentence_word_indicies.insert(
-                    0, self.language_to_index[self.START_TOKEN]
-                )
+                sentence_word_indicies.insert(0, self.language_to_index.get(self.START_TOKEN, 0))
             if end_token:
-                sentence_word_indicies.append(self.language_to_index[self.END_TOKEN])
-            for _ in range(len(sentence_word_indicies), self.max_sequence_length):
-                sentence_word_indicies.append(
-                    self.language_to_index[self.PADDING_TOKEN]
-                )
+                sentence_word_indicies.append(self.language_to_index.get(self.END_TOKEN, 0))
+            sentence_word_indicies = sentence_word_indicies[:self.max_sequence_length]
+            padding_needed = self.max_sequence_length - len(sentence_word_indicies)
+            sentence_word_indicies.extend(
+                [self.language_to_index.get(self.PADDING_TOKEN, 0)] * padding_needed
+            )
+
             return torch.tensor(sentence_word_indicies)
 
         tokenized = []
