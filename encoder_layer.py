@@ -1,5 +1,5 @@
 from layer_normalization import LayerNormalization
-from mutlihead_attention import MultiHeadAttention
+from mutli_head_attention import MultiHeadAttention
 from positionwise_feed_forward import PositionwiseFeedForward
 import torch
 from torch import nn

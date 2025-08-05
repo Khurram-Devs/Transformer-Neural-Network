@@ -6,8 +6,8 @@ from torch import nn
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 
-english_file = "path-to-file.txt"
-spanish_file = "path-to-file.txt"
+english_file = "./english.txt"
+spanish_file = "./spanish.txt"
 
 START_TOKEN = "<START>"
 PADDING_TOKEN = "<PADDING>"
