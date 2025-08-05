@@ -1,4 +1,4 @@
-from self_attention import scaled_dot_product
+from global_functions import scaled_dot_product
 import torch
 from torch.nn import nn
 
