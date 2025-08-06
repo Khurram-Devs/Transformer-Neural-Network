@@ -1,10 +1,10 @@
-import torch
 from torch import nn
+class SequentialEncoder(nn.Module):
+    def __init__(self, *layers):
+        super().__init__()
+        self.layers = nn.ModuleList(layers)
 
-
-class SequentialEncoder(nn.Sequential):
-    def forward(self, *inputs):
-        x, self_attention_mask = inputs
-        for module in self._modules.values():
-            x = module(x, self_attention_mask)
+    def forward(self, x, self_attention_mask):
+        for layer in self.layers:
+            x = layer(x, self_attention_mask)
         return x

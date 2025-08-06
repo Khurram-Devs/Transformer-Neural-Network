@@ -1,43 +1,40 @@
-from layer_normalization import LayerNormalization
-from mutli_head_attention import MultiHeadAttention
-from multi_head_cross_attention import MultiHeadCrossAttention
-from positionwise_feed_forward import PositionwiseFeedForward
 import torch
 from torch import nn
+from layer_normalization import LayerNormalization
+from multi_head_attention import MultiHeadAttention
+from multi_head_cross_attention import MultiHeadCrossAttention
+from positionwise_feed_forward import PositionwiseFeedForward
 
 
 class DecoderLayer(nn.Module):
-    def __init__(self, d_model, ffn_hidden, num_heads, drop_prob):
-        super(DecoderLayer, self).__init__()
-        self.self_attention = MultiHeadAttention(d_model=d_model, num_heads=num_heads)
-        self.layer_norm1 = LayerNormalization(parameters_shape=[d_model])
-        self.dropout1 = nn.Dropout(p=drop_prob)
+    def __init__(self, d_model, ffn_hidden, num_heads, drop_prob=0.1):
+        super().__init__()
+        self.self_attention = MultiHeadAttention(d_model, num_heads)
+        self.norm1 = LayerNormalization(parameters_shape=[d_model])
+        self.dropout1 = nn.Dropout(drop_prob)
 
-        self.encoder_decoder_attention = MultiHeadCrossAttention(
-            d_model=d_model, num_heads=num_heads
-        )
-        self.layer_norm2 = LayerNormalization(parameters_shape=[d_model])
-        self.dropout2 = nn.Dropout(p=drop_prob)
+        self.cross_attention = MultiHeadCrossAttention(d_model, num_heads)
+        self.norm2 = LayerNormalization(parameters_shape=[d_model])
+        self.dropout2 = nn.Dropout(drop_prob)
 
-        self.ffn = PositionwiseFeedForward(
-            d_model=d_model, hidden=ffn_hidden, drop_prob=drop_prob
-        )
-        self.layer_norm3 = LayerNormalization(parameters_shape=[d_model])
-        self.dropout3 = nn.Dropout(p=drop_prob)
+        self.ffn = PositionwiseFeedForward(d_model, hidden_dim=ffn_hidden, dropout=drop_prob)
+        self.norm3 = LayerNormalization(parameters_shape=[d_model])
+        self.dropout3 = nn.Dropout(drop_prob)
 
-    def forward(self, x, y, self_attention_mask, cross_attention_mask):
-        _y = y.clone()
-        y = self.self_attention(y, mask=self_attention_mask)
-        y = self.dropout1(y)
-        y = self.layer_norm1(y + _y)
+    def forward(self, encoder_output, decoder_input, self_attention_mask=None, cross_attention_mask=None):
+        residual1 = decoder_input
+        x = self.self_attention(decoder_input, mask=self_attention_mask)
+        x = self.dropout1(x)
+        x = self.norm1(x + residual1)
 
-        _y = y.clone()
-        y = self.encoder_decoder_attention(x, y, mask=cross_attention_mask)
-        y = self.dropout2(y)
-        y = self.layer_norm2(y + _y)
+        residual2 = x
+        x = self.cross_attention(encoder_output, x, mask=cross_attention_mask)
+        x = self.dropout2(x)
+        x = self.norm2(x + residual2)
 
-        _y = y.clone()
-        y = self.ffn(y)
-        y = self.dropout3(y)
-        y = self.layer_norm3(y + _y)
-        return y
+        residual3 = x
+        x = self.ffn(x)
+        x = self.dropout3(x)
+        x = self.norm3(x + residual3)
+
+        return x

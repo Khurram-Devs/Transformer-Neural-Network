@@ -3,19 +3,21 @@ import torch.nn as nn
 
 
 class PositionalEncoding(nn.Module):
-    def __init__(self, d_model, max_sequence_length):
+    def __init__(self, d_model, max_sequence_length=5000):
         super().__init__()
-        self.max_sequence_length = max_sequence_length
         self.d_model = d_model
 
-    def forward(self):
-        even_i = torch.arange(0, self.d_model, 2).float()
-        denominator = torch.pow(10000, even_i / self.d_model)
-        position = torch.arange(self.max_sequence_length).reshape(
-            self.max_sequence_length, 1
-        )
-        even_PE = torch.sin(position / denominator)
-        odd_PE = torch.cos(position / denominator)
-        stacked = torch.stack([even_PE, odd_PE], dim=2)
-        PE = torch.flatten(stacked, start_dim=1, end_dim=2)
-        return PE
+        pe = torch.zeros(max_sequence_length, d_model)
+        position = torch.arange(0, max_sequence_length).unsqueeze(1).float()
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-torch.log(torch.tensor(10000.0)) / d_model))
+
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+
+        pe = pe.unsqueeze(0)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x):
+        seq_len = x.size(1)
+        x = x + self.pe[:, :seq_len, :].to(x.device)
+        return x

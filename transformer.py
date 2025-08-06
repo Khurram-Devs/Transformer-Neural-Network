@@ -1,7 +1,7 @@
-from encoder import Encoder
-from decoder import Decoder
 import torch
 from torch import nn
+from encoder import Encoder
+from decoder import Decoder
 
 
 class Transformer(nn.Module):
@@ -21,34 +21,34 @@ class Transformer(nn.Module):
         PADDING_TOKEN,
     ):
         super().__init__()
+
         self.encoder = Encoder(
-            d_model,
-            ffn_hidden,
-            num_heads,
-            drop_prob,
-            num_layers,
-            max_sequence_length,
-            english_to_index,
-            START_TOKEN,
-            END_TOKEN,
-            PADDING_TOKEN,
+            d_model=d_model,
+            ffn_hidden=ffn_hidden,
+            num_heads=num_heads,
+            drop_prob=drop_prob,
+            num_layers=num_layers,
+            max_sequence_length=max_sequence_length,
+            language_to_index=english_to_index,
+            START_TOKEN=START_TOKEN,
+            END_TOKEN=END_TOKEN,
+            PADDING_TOKEN=PADDING_TOKEN,
         )
+
         self.decoder = Decoder(
-            d_model,
-            ffn_hidden,
-            num_heads,
-            drop_prob,
-            num_layers,
-            max_sequence_length,
-            spanish_to_index,
-            START_TOKEN,
-            END_TOKEN,
-            PADDING_TOKEN,
+            d_model=d_model,
+            ffn_hidden=ffn_hidden,
+            num_heads=num_heads,
+            drop_prob=drop_prob,
+            num_layers=num_layers,
+            max_sequence_length=max_sequence_length,
+            language_to_index=spanish_to_index,
+            START_TOKEN=START_TOKEN,
+            END_TOKEN=END_TOKEN,
+            PADDING_TOKEN=PADDING_TOKEN,
         )
-        self.linear = nn.Linear(d_model, es_vocab_size)
-        self.device = (
-            torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-        )
+
+        self.output_layer = nn.Linear(d_model, es_vocab_size)
 
     def forward(
         self,
@@ -62,19 +62,21 @@ class Transformer(nn.Module):
         dec_start_token=False,
         dec_end_token=False,
     ):
-        x = self.encoder(
+        encoder_output = self.encoder(
             x,
-            encoder_self_attention_mask,
+            self_attention_mask=encoder_self_attention_mask,
             start_token=enc_start_token,
             end_token=enc_end_token,
         )
-        out = self.decoder(
-            x,
+
+        decoder_output = self.decoder(
+            encoder_output,
             y,
-            decoder_self_attention_mask,
-            decoder_cross_attention_mask,
+            self_attention_mask=decoder_self_attention_mask,
+            cross_attention_mask=decoder_cross_attention_mask,
             start_token=dec_start_token,
             end_token=dec_end_token,
         )
-        out = self.linear(out)
-        return out
+
+        logits = self.output_layer(decoder_output)
+        return logits
