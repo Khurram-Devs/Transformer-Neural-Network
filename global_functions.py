@@ -27,4 +27,4 @@ def is_valid_tokens(sentence, vocab):
 
 
 def is_valid_length(sentence, max_sequence_length):
-    return len(sentence) < (max_sequence_length - 1)  # reserve for <END> token?
+    return len(sentence) < (max_sequence_length - 2)

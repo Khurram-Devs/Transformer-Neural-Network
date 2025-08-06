@@ -8,16 +8,16 @@ from global_functions import is_valid_length, is_valid_tokens
 
 english_file = "./english.txt"
 spanish_file = "./spanish.txt"
-TOTAL_SENTENCES = 50
-max_sequence_length = 200
-batch_size = 30
-d_model = 512
-ffn_hidden = 2048
-num_heads = 8
+TOTAL_SENTENCES = 10000
+max_sequence_length = 128
+batch_size = 64
+d_model = 256
+ffn_hidden = 1024
+num_heads = 4
 drop_prob = 0.1
-num_layers = 1
-num_epochs = 10
-learning_rate = 1e-4
+num_layers = 4
+num_epochs = 20
+learning_rate = 5e-4 
 NEG_INFTY = -1e9
 
 START_TOKEN = "<START>"
