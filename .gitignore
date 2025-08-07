@@ -1,5 +1,5 @@
 #training modal
-./transformer_es.pt
+transformer_es.pt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
