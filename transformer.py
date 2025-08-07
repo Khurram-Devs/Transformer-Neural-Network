@@ -1,5 +1,5 @@
 import torch
-from torch import nn
+from torch import nn, Tensor
 from encoder import Encoder
 from decoder import Decoder
 
@@ -7,18 +7,18 @@ from decoder import Decoder
 class Transformer(nn.Module):
     def __init__(
         self,
-        d_model,
-        ffn_hidden,
-        num_heads,
-        drop_prob,
-        num_layers,
-        max_sequence_length,
-        es_vocab_size,
-        english_to_index,
-        spanish_to_index,
-        START_TOKEN,
-        END_TOKEN,
-        PADDING_TOKEN,
+        d_model: int,
+        ffn_hidden: int,
+        num_heads: int,
+        drop_prob: float,
+        num_layers: int,
+        max_sequence_length: int,
+        es_vocab_size: int,
+        english_to_index: dict,
+        spanish_to_index: dict,
+        START_TOKEN: str,
+        END_TOKEN: str,
+        PADDING_TOKEN: str,
     ):
         super().__init__()
 
@@ -52,25 +52,25 @@ class Transformer(nn.Module):
 
     def forward(
         self,
-        x,
-        y,
-        encoder_self_attention_mask=None,
-        decoder_self_attention_mask=None,
-        decoder_cross_attention_mask=None,
-        enc_start_token=False,
-        enc_end_token=False,
-        dec_start_token=False,
-        dec_end_token=False,
-    ):
-        encoder_output = self.encoder(
+        x: list,
+        y: list,
+        encoder_self_attention_mask: Tensor = None,
+        decoder_self_attention_mask: Tensor = None,
+        decoder_cross_attention_mask: Tensor = None,
+        enc_start_token: bool = False,
+        enc_end_token: bool = False,
+        dec_start_token: bool = False,
+        dec_end_token: bool = False,
+    ) -> Tensor:
+        enc_out = self.encoder(
             x,
             self_attention_mask=encoder_self_attention_mask,
             start_token=enc_start_token,
             end_token=enc_end_token,
         )
 
-        decoder_output = self.decoder(
-            encoder_output,
+        dec_out = self.decoder(
+            enc_out,
             y,
             self_attention_mask=decoder_self_attention_mask,
             cross_attention_mask=decoder_cross_attention_mask,
@@ -78,5 +78,4 @@ class Transformer(nn.Module):
             end_token=dec_end_token,
         )
 
-        logits = self.output_layer(decoder_output)
-        return logits
+        return self.output_layer(dec_out)
