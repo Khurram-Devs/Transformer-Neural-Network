@@ -15,7 +15,6 @@ class SentenceEmbedding(nn.Module):
         PADDING_TOKEN: str,
     ):
         super().__init__()
-        self.device = get_device()
         self.max_sequence_length = max_sequence_length
         self.language_to_index = language_to_index
 
@@ -31,19 +30,24 @@ class SentenceEmbedding(nn.Module):
         self.dropout = nn.Dropout(p=0.1)
 
     def batch_tokenize(
-        self, batch: list[str], start_token: bool = True, end_token: bool = True
+        self, batch, start_token: bool = True, end_token: bool = True
     ) -> Tensor:
+        device = next(self.parameters()).device
         batch_size = len(batch)
         token_ids = torch.full(
             (batch_size, self.max_sequence_length),
             fill_value=self.PAD_IDX,
             dtype=torch.long,
-            device=self.device,
+            device=device,
         )
 
         for i, sentence in enumerate(batch):
-            tokens = list(sentence)
-            indices = [self.language_to_index.get(ch, self.PAD_IDX) for ch in tokens]
+            if isinstance(sentence, str):
+                tokens = list(sentence)
+            else:
+                tokens = sentence
+                
+            indices = [self.language_to_index.get(token, self.PAD_IDX) for token in tokens]
 
             if start_token:
                 indices = [self.START_IDX] + indices
@@ -51,12 +55,12 @@ class SentenceEmbedding(nn.Module):
                 indices = indices + [self.END_IDX]
 
             indices = indices[: self.max_sequence_length]
-            token_ids[i, : len(indices)] = torch.tensor(indices, dtype=torch.long)
+            token_ids[i, : len(indices)] = torch.tensor(indices, dtype=torch.long, device=device)
 
         return token_ids
 
     def forward(
-        self, batch: list[str], start_token: bool = True, end_token: bool = True
+        self, batch, start_token: bool = True, end_token: bool = True
     ) -> Tensor:
         x = self.batch_tokenize(batch, start_token, end_token)
         x = self.embedding(x)

@@ -9,11 +9,12 @@ class SequentialDecoder(nn.Module):
 
     def forward(
         self,
-        x: Tensor,
-        y: Tensor,
+        encoder_output: Tensor,
+        decoder_input: Tensor,
         self_attention_mask: Optional[Tensor] = None,
         cross_attention_mask: Optional[Tensor] = None,
     ) -> Tensor:
+        x = decoder_input
         for layer in self.layers:
-            y = layer(x, y, self_attention_mask, cross_attention_mask)
-        return y
+            x = layer(encoder_output, x, self_attention_mask, cross_attention_mask)
+        return x
