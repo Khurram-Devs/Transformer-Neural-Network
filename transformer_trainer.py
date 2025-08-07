@@ -1,14 +1,13 @@
 import torch
 from torch import nn
 from torch.utils.data import Dataset, DataLoader
-import numpy as np
-
+import os
 from transformer import Transformer
-from global_functions import is_valid_length, is_valid_tokens
+from global_functions import create_masks, is_valid_length, is_valid_tokens, get_device
 
 english_file = "./english.txt"
 spanish_file = "./spanish.txt"
-TOTAL_SENTENCES = 10000
+TOTAL_SENTENCES = 1000
 max_sequence_length = 128
 batch_size = 64
 d_model = 256
@@ -16,44 +15,190 @@ ffn_hidden = 1024
 num_heads = 4
 drop_prob = 0.1
 num_layers = 4
-num_epochs = 20
-learning_rate = 5e-4 
-NEG_INFTY = -1e9
+num_epochs = 10
+learning_rate = 5e-4
+model_path = "transformer_es.pt"
+device = get_device()
 
 START_TOKEN = "<START>"
 PADDING_TOKEN = "<PADDING>"
 END_TOKEN = "<END>"
 
 spanish_vocabulary = [
-    START_TOKEN, " ", "!", '"', "#", "$", "%", "&", "'", "(", ")", "*", "+", ",", "-",
-    ".", "/", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ":", "<", "=", ">", "?",
-    "@", "[", "\\", "]", "^", "_", "`", "a", "b", "c", "d", "e", "f", "g", "h", "i",
-    "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
-    "á", "é", "í", "ó", "ú", "ñ", "ü", "¡", "¿", "{", "|", "}", "~", PADDING_TOKEN, END_TOKEN,
+    START_TOKEN,
+    " ",
+    "!",
+    '"',
+    "#",
+    "$",
+    "%",
+    "&",
+    "'",
+    "(",
+    ")",
+    "*",
+    "+",
+    ",",
+    "-",
+    ".",
+    "/",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    ":",
+    "<",
+    "=",
+    ">",
+    "?",
+    "@",
+    "[",
+    "\\",
+    "]",
+    "^",
+    "_",
+    "`",
+    "a",
+    "b",
+    "c",
+    "d",
+    "e",
+    "f",
+    "g",
+    "h",
+    "i",
+    "j",
+    "k",
+    "l",
+    "m",
+    "n",
+    "o",
+    "p",
+    "q",
+    "r",
+    "s",
+    "t",
+    "u",
+    "v",
+    "w",
+    "x",
+    "y",
+    "z",
+    "á",
+    "é",
+    "í",
+    "ó",
+    "ú",
+    "ñ",
+    "ü",
+    "¡",
+    "¿",
+    "{",
+    "|",
+    "}",
+    "~",
+    PADDING_TOKEN,
+    END_TOKEN,
 ]
+
 english_vocabulary = [
-    START_TOKEN, " ", "!", '"', "#", "$", "%", "&", "'", "(", ")", "*", "+", ",", "-",
-    ".", "/", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ":", "<", "=", ">", "?",
-    "@", "[", "\\", "]", "^", "_", "`", "a", "b", "c", "d", "e", "f", "g", "h", "i",
-    "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
-    "{", "|", "}", "~", PADDING_TOKEN, END_TOKEN,
+    START_TOKEN,
+    " ",
+    "!",
+    '"',
+    "#",
+    "$",
+    "%",
+    "&",
+    "'",
+    "(",
+    ")",
+    "*",
+    "+",
+    ",",
+    "-",
+    ".",
+    "/",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    ":",
+    "<",
+    "=",
+    ">",
+    "?",
+    "@",
+    "[",
+    "\\",
+    "]",
+    "^",
+    "_",
+    "`",
+    "a",
+    "b",
+    "c",
+    "d",
+    "e",
+    "f",
+    "g",
+    "h",
+    "i",
+    "j",
+    "k",
+    "l",
+    "m",
+    "n",
+    "o",
+    "p",
+    "q",
+    "r",
+    "s",
+    "t",
+    "u",
+    "v",
+    "w",
+    "x",
+    "y",
+    "z",
+    "{",
+    "|",
+    "}",
+    "~",
+    PADDING_TOKEN,
+    END_TOKEN,
 ]
 
-index_to_spanish = {k: v for k, v in enumerate(spanish_vocabulary)}
-spanish_to_index = {v: k for k, v in enumerate(spanish_vocabulary)}
-index_to_english = {k: v for k, v in enumerate(english_vocabulary)}
-english_to_index = {v: k for k, v in enumerate(english_vocabulary)}
+index_to_spanish = {i: ch for i, ch in enumerate(spanish_vocabulary)}
+spanish_to_index = {ch: i for i, ch in enumerate(spanish_vocabulary)}
+index_to_english = {i: ch for i, ch in enumerate(english_vocabulary)}
+english_to_index = {ch: i for i, ch in enumerate(english_vocabulary)}
 
-with open(english_file, "r") as file:
-    english_sentences = file.readlines()
-with open(spanish_file, "r") as file:
-    spanish_sentences = file.readlines()
+with open(english_file, "r", encoding="utf-8") as file:
+    english_sentences = [
+        line.strip().lower() for line in file.readlines()[:TOTAL_SENTENCES]
+    ]
 
-english_sentences = [s.strip().lower() for s in english_sentences[:TOTAL_SENTENCES]]
-spanish_sentences = [s.strip().lower() for s in spanish_sentences[:TOTAL_SENTENCES]]
+with open(spanish_file, "r", encoding="utf-8") as file:
+    spanish_sentences = [
+        line.strip().lower() for line in file.readlines()[:TOTAL_SENTENCES]
+    ]
 
 valid_indices = [
-    i for i in range(len(english_sentences))
+    i
+    for i in range(len(english_sentences))
     if is_valid_length(english_sentences[i], max_sequence_length)
     and is_valid_length(spanish_sentences[i], max_sequence_length)
     and is_valid_tokens(spanish_sentences[i], spanish_vocabulary)
@@ -62,21 +207,24 @@ valid_indices = [
 english_sentences = [english_sentences[i] for i in valid_indices]
 spanish_sentences = [spanish_sentences[i] for i in valid_indices]
 
+
 class TextDataset(Dataset):
-    def __init__(self, english_sentences, spanish_sentences):
-        self.english_sentences = english_sentences
-        self.spanish_sentences = spanish_sentences
+    def __init__(self, en, es):
+        self.en = en
+        self.es = es
 
     def __len__(self):
-        return len(self.english_sentences)
+        return len(self.en)
 
     def __getitem__(self, idx):
-        return self.english_sentences[idx], self.spanish_sentences[idx]
+        return self.en[idx], self.es[idx]
 
-dataset = TextDataset(english_sentences, spanish_sentences)
-train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+train_loader = DataLoader(
+    TextDataset(english_sentences, spanish_sentences),
+    batch_size=batch_size,
+    shuffle=True,
+)
 
 transformer = Transformer(
     d_model,
@@ -93,110 +241,72 @@ transformer = Transformer(
     PADDING_TOKEN,
 ).to(device)
 
-for param in transformer.parameters():
-    if param.dim() > 1:
-        nn.init.xavier_uniform_(param)
-
-optimizer = torch.optim.Adam(transformer.parameters(), lr=learning_rate)
-criterion = nn.CrossEntropyLoss(ignore_index=spanish_to_index[PADDING_TOKEN], reduction="none")
-
-def create_masks(eng_batch, es_batch):
-    num_sentences = len(eng_batch)
-    look_ahead_mask = torch.triu(torch.ones(max_sequence_length, max_sequence_length), diagonal=1).bool()
-
-    encoder_padding_mask = torch.full((num_sentences, max_sequence_length, max_sequence_length), False)
-    decoder_padding_mask_self = torch.full((num_sentences, max_sequence_length, max_sequence_length), False)
-    decoder_padding_mask_cross = torch.full((num_sentences, max_sequence_length, max_sequence_length), False)
-
-    for i in range(num_sentences):
-        eng_len = len(eng_batch[i])
-        es_len = len(es_batch[i])
-        eng_pad = np.arange(eng_len + 1, max_sequence_length)
-        es_pad = np.arange(es_len + 1, max_sequence_length)
-
-        encoder_padding_mask[i, :, eng_pad] = True
-        encoder_padding_mask[i, eng_pad, :] = True
-        decoder_padding_mask_self[i, :, es_pad] = True
-        decoder_padding_mask_self[i, es_pad, :] = True
-        decoder_padding_mask_cross[i, :, eng_pad] = True
-        decoder_padding_mask_cross[i, es_pad, :] = True
-
-    return (
-        torch.where(encoder_padding_mask, NEG_INFTY, 0),
-        torch.where(look_ahead_mask + decoder_padding_mask_self, NEG_INFTY, 0),
-        torch.where(decoder_padding_mask_cross, NEG_INFTY, 0),
+if os.path.exists(model_path):
+    transformer.load_state_dict(torch.load(model_path, map_location=device))
+    transformer.eval()
+    print("✅ Model loaded.")
+else:
+    print("🚀 Training model from scratch...")
+    optimizer = torch.optim.Adam(transformer.parameters(), lr=learning_rate)
+    criterion = nn.CrossEntropyLoss(
+        ignore_index=spanish_to_index[PADDING_TOKEN], reduction="none"
     )
 
-transformer.train()
-for epoch in range(num_epochs):
-    print(f"\nEpoch {epoch + 1}/{num_epochs}")
-    total_loss = 0
-    for batch_num, (eng_batch, es_batch) in enumerate(train_loader):
-        transformer.train()
+    transformer.train()
+    for epoch in range(num_epochs):
+        print(f"\n🌍 Epoch {epoch + 1}/{num_epochs}")
+        total_loss = 0
+        for batch_num, (en, es) in enumerate(train_loader):
+            enc_mask, dec_self_mask, dec_cross_mask = create_masks(
+                en, es, max_sequence_length, spanish_to_index[PADDING_TOKEN]
+            )
+            optimizer.zero_grad()
+            outputs = transformer(
+                en,
+                es,
+                enc_mask.to(device),
+                dec_self_mask.to(device),
+                dec_cross_mask.to(device),
+                enc_start_token=False,
+                enc_end_token=False,
+                dec_start_token=True,
+                dec_end_token=True,
+            )
+            labels = transformer.decoder.get_embedding().batch_tokenize(
+                es, start_token=False, end_token=True
+            )
+            loss = criterion(outputs.view(-1, len(spanish_vocabulary)), labels.view(-1))
+            valid = labels.view(-1) != spanish_to_index[PADDING_TOKEN]
+            loss = loss.sum() / valid.sum()
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+            if batch_num % 10 == 0:
+                print(f"Batch {batch_num} | Loss: {loss.item():.4f}")
+        print(f"✅ Epoch {epoch + 1} | Avg Loss: {total_loss / len(train_loader):.4f}")
 
-        (
-            enc_mask,
-            dec_self_mask,
-            dec_cross_mask,
-        ) = create_masks(eng_batch, es_batch)
+    torch.save(transformer.state_dict(), model_path)
+    print(f"💾 Model saved to {model_path}")
 
-        optimizer.zero_grad()
-        outputs = transformer(
-            eng_batch,
-            es_batch,
-            enc_mask.to(device),
-            dec_self_mask.to(device),
-            dec_cross_mask.to(device),
-            enc_start_token=False,
-            enc_end_token=False,
-            dec_start_token=True,
-            dec_end_token=True,
-        )
 
-        labels = transformer.decoder.get_embedding().batch_tokenize(
-            es_batch, start_token=False, end_token=True
-        )
-
-        loss = criterion(
-            outputs.view(-1, len(spanish_vocabulary)),
-            labels.view(-1),
-        )
-
-        valid = labels.view(-1) != spanish_to_index[PADDING_TOKEN]
-        loss = loss.sum() / valid.sum()
-        loss.backward()
-        optimizer.step()
-
-        total_loss += loss.item()
-        if batch_num % 100 == 0 or batch_num == 0:
-            print(f"Batch {batch_num} | Loss: {loss.item():.4f}")
-            print(f"English: {eng_batch[0]}")
-            print(f"Target:  {es_batch[0]}")
-            prediction = torch.argmax(outputs[0], axis=1)
-            predicted_sentence = ""
-            for idx in prediction:
-                word = index_to_spanish[idx.item()]
-                if word == END_TOKEN:
-                    break
-                predicted_sentence += word
-            print(f"Predicted: {predicted_sentence}")
-            print("-" * 40)
-
-transformer.eval()
-
-def translate(eng_sentence):
+def translate(eng_sentence: str) -> str:
+    transformer.eval()
     eng_sentence = (eng_sentence.lower(),)
-    es_sentence = ("",)
+    generated = ["<START>"]
+
     for _ in range(max_sequence_length):
-        (
-            enc_mask,
-            dec_self_mask,
-            dec_cross_mask,
-        ) = create_masks(eng_sentence, es_sentence)
+        es_string = "".join([tok for tok in generated if tok != START_TOKEN])
+        enc_mask, dec_self_mask, dec_cross_mask = create_masks(
+            eng_sentence,
+            (es_string,),
+            max_sequence_length,
+            spanish_to_index[PADDING_TOKEN],
+        )
+
         with torch.no_grad():
-            predictions = transformer(
+            logits = transformer(
                 eng_sentence,
-                es_sentence,
+                (es_string,),
                 enc_mask.to(device),
                 dec_self_mask.to(device),
                 dec_cross_mask.to(device),
@@ -205,14 +315,14 @@ def translate(eng_sentence):
                 dec_start_token=True,
                 dec_end_token=False,
             )
-        next_token_logits = predictions[0][len(es_sentence[0])]
-        next_token_index = torch.argmax(next_token_logits).item()
-        next_token = index_to_spanish[next_token_index]
-        es_sentence = (es_sentence[0] + next_token,)
+
+        next_token_id = torch.argmax(logits[0][len(es_string)]).item()
+        next_token = index_to_spanish[next_token_id]
+        generated.append(next_token)
+
         if next_token == END_TOKEN:
             break
-    return es_sentence[0]
 
-test_input = "should we go to the college?"
-result = translate(test_input)
-print(f"\nTranslation:\nInput: {test_input}\nOutput: {result}")
+    result = "".join([tok for tok in generated if tok not in (START_TOKEN, END_TOKEN)])
+    print("Generated Tokens:", generated)
+    return result
